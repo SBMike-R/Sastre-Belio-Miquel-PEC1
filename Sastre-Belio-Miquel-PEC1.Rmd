@@ -1,0 +1,31 @@
+---
+title: "Anàlisi de dades òmiques (M0 - 157)"
+subtitle: "Primera prova d'avaluació contínua"
+author: "MIQUEL SASTRE BELIO"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Resum
+
+# Objectius
+
+Els objectius generals d'aquesta primera prova d'avaluació continuada són reforçar el coneixement sobre les tecnologies òmiques, l'ús de _Bioconductor_ i les classes que s'utilitzen per emmagatzemar dades òmiques, Git com a eina de control de versions i les eines estadístiques d'exploració de dades. Així, como últim objectiu, es té planificar i exectuar una versió simplificada del procés d'anàlisi de dades òmiques, alhora que practicar amb algunes eines i mètodes que s'han treballat durant el primer repte.
+
+
+# Mètodes
+
+S'ha seleccionat el data-set corresponent a l'estudi _Diet modulates the protective effects of dimethyl fumarate mediated by the immunometabolic neutrophil receptor HCA2 - Metabolomics_ (Study ID ST003156). És un estudi recent i que té com a punt central de la seva hipòtesi la dieta. Concretament, la hipòtesi de l'estudi es basa en que la dieta pot ser l'element o factor clau sobre els pacients amb esclerosis múltiple (EM) que no es beneficien del profàrmac dimetilfumarato (DMF), un dels agents més utilitzats en aquesta malaltia.
+
+Totes les dades s'han obtingut de l'arxiu `ST003156_AN005178.txt`, el qual conté la descripció de l'estudi, les metadades, així com les dades crues. A partir d'aquest arxiu, es crearà l'objecte `SummarizedExperiment` i es farà una anàlisi exploratòria de les dades.
+
+Per a elaborar l'anàlisi s'ha utilitzat el programa RStudio `r version$version.string`, així com el programa Microsoft Excel.
+
+# Resultats
+
+# Discussió
+
+# Conclusions
+
+# Referències
+
