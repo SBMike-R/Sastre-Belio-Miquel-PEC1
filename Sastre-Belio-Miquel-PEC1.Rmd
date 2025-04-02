@@ -1,9 +1,14 @@
 ---
 title: "Anàlisi de dades òmiques (M0 - 157)"
-subtitle: "Primera prova d'avaluació contínua"
 author: "MIQUEL SASTRE BELIO"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+    theme: united
+subtitle: Primera prova d'avaluació contínua
 ---
 
 # Resum
@@ -39,7 +44,7 @@ library(FactoMineR)
 library(factoextra)
 ```
 
-```{r}
+```{r, echo=FALSE}
 lines <- readLines("ST003156_AN005178.txt")
 lines[1:5]
 # Ref.: https://support.bioconductor.org/p/9151215/
@@ -48,7 +53,7 @@ A continuació, en el següent fragment de codi es mostra la recopil·lació de 
 
 Cal comentar que s'ha hagut de preprocessar les dades mínimament per poder elaborar l'exploració de les mateixes posterior.
 
-```{r}
+```{r, echo=TRUE}
 metadata <- list(
   Study_ID = "ST003156",
   Study_Title = "Diet modulates the protective effects of dimethyl fumarate mediated by the immunometabolic neutrophil receptor HCA2",
@@ -93,8 +98,6 @@ for (i in 1: nrow(counts)){
 
 counts[] <- lapply(counts, as.numeric)
 
-colnames(counts)
-
 rownames(colData) <- colnames(counts)
 
 sumexp <- SummarizedExperiment(assays = list(counts=counts),
@@ -115,7 +118,9 @@ Pel que fa a les diferències entre els objectes de tipus `ExpressionSet` i `Sum
 
 ## Anàlisi exploratòria
 
-```{r}
+A continaució e sprocedeix a mostrar els resultats de l'anàlisi exploratòria. A la següent figura es mostren els histogrames de les 6 primeres variables. Es pot veure que les distribucions o la forma de les figures segons el parametre canvia. No es veu un patró distingit o semblant.
+
+```{r, echo=FALSE}
 dd <- assay(sumexp, "counts")
 dd <- as.data.frame(t(dd))
 
@@ -135,15 +140,17 @@ plots <- lapply(names(dd), function(var) {
 # Mostrar los gráficos en una cuadrícula
 grid.arrange(grobs = plots[1:3], ncol = 3)  
 ```
-```{r}
+Seguidament, s'elabora una visualització de la distribució de les dades diferenciant pels factors _Treatment_ i _Diet_. Pel que es pot observar, no hi hauria clarament un patró definit quan les variables es filtren pels factors. Amb aquest tipus de visualitzacions no s'aconsegueix observar relacions clares entre variables i factors.
+
+```{r, echo=FALSE}
 
 dd$Diet      <- colData$Diet
 dd$Treatment <- colData$Treatment
 
-# Filtrar solo las variables numéricas
+
 numeric_vars <- names(dd)[sapply(dd, is.numeric)]
 
-# Crear una lista de histogramas por cada variable numérica, agrupada por Diet y Treatment
+
 plots <- lapply(numeric_vars, function(var) {
   ggplot(dd, aes_string(x = "Diet", y = var, fill = "Diet")) +
     geom_boxplot(alpha = 0.5, color = "black") +
@@ -152,55 +159,77 @@ plots <- lapply(numeric_vars, function(var) {
     ggtitle(var)
 })
 
-# Mostrar los gráficos en una cuadrícula
+
 grid.arrange(grobs = plots[1:3], ncol = 3)
 
 
-```
-```{r}
+``` 
+
+Per intentar analitzar de manera més profuna la relació entre els resultats de les variables segons els factors inclosos i les relacions entre les variables en si, es decideix elaborar una anàlisi de components principals o PCA, així com un anàlisi de classifiació de clusters mitjançant l'algoritme de k veïns més propers o k-NN.
+
+Es mostra els resultats del PCA i es pot observar com amb les dues primeres components ja s'aconsegueix una acumulació de variància del 44%.
+
+```{r, echo=FALSE}
+
 pca <- prcomp(dd[, numeric_vars], scale. = TRUE)
-summary(pca)
-biplot(pca, scale = 0)
+# summary(pca)
+biplot(pca, expand  =3)
+explained_variance  <- (pca$sdev^2) / sum(pca$sdev^2)
+cumulative_variance <- cumsum(explained_variance)
+
+variance_df <- data.frame(
+  Component = paste("PC", 1:length(explained_variance), sep = ""),
+  ExplainedVariance = explained_variance,
+  CumulativeVariance = cumulative_variance
+)
+
+barplot(height = variance_df$CumulativeVariance, names.arg  = variance_df$Component)
+
 pca_scores <- as.data.frame(pca$x)
 
-# Añadir las variables de los factores (Diet y Treatment) al dataframe
-pca_scores$Diet <- dd$Diet
+
+pca_scores$Diet      <- dd$Diet
 pca_scores$Treatment <- dd$Treatment
 
 ggplot(pca_scores, aes(x = PC1, y = PC2, color = Diet, shape = Treatment)) +
   geom_point(size = 3) +
-  labs(title = "PCA - Componentes principales 1 y 2",
-       x = "Componente Principal 1",
-       y = "Componente Principal 2") +
+  labs(title = "PCA - Components principals 1 y 2",
+       x = "Component Principal 1",
+       y = "Component Principal 2") +
   theme_minimal()
 
 ```
-```{r}
+
+```{r, echo=FALSE}
 pca_clustering_data <- pca_scores[, c("PC1", "PC2")]
 
 set.seed(123) 
-kmeans_result <- kmeans(pca_clustering_data, centers = 3) 
+kmeans_result    <- kmeans(pca_clustering_data, centers = 3) 
 
-
-table(kmeans_result$cluster)
+# table(kmeans_result$cluster)
 pca_scores$Cluster <- as.factor(kmeans_result$cluster)
 
+centroides <- kmeans_result$centers
 
+# Agregar los centroides al gráfico
 ggplot(pca_scores, aes(x = PC1, y = PC2, color = Cluster)) +
   geom_point(size = 3) +
-  labs(title = "Clustering K-means sobre los resultados de PCA",
-       x = "Componente Principal 1",
-       y = "Componente Principal 2") +
+  geom_point(data = as.data.frame(centroides), aes(x = PC1, y = PC2), color = "red", size = 4, shape = 3) + 
+  labs(title = "Clustering K-nn sobre els resultats del PCA",
+       x = "Component Principal 1",
+       y = "Component Principal 2") +
   theme_minimal()
 ```
 
-# Discussió
-
 # Conclusions
+
+Aquesta anàlisi inicial permet visualitzar i representar una anàlisi preliminar de les dades, mostrant la creació dun objecte `SummarizedExperiment` amb l'ús de tècniques estadístiques per buscar relacions i el comportament de les dades.
 
 # Referències
 
 https://www.sthda.com/english/wiki/expressionset-and-summarizedexperiment
 
 https://rpubs.com/jrgonzalezISGlobal/omicBioC
+
+https://github.com/SBMike-R/Sastre-Belio-Miquel-PEC1.git
 
