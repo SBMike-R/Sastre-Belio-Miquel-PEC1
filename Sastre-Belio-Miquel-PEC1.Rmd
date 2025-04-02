@@ -11,8 +11,6 @@ output:
 subtitle: Primera prova d'avaluació contínua
 ---
 
-# Resum
-
 # Objectius
 
 Els objectius generals d'aquesta primera prova d'avaluació continuada són reforçar el coneixement sobre les tecnologies òmiques, l'ús de _Bioconductor_ i les classes que s'utilitzen per emmagatzemar dades òmiques, Git com a eina de control de versions i les eines estadístiques d'exploració de dades. Així, como últim objectiu, es té planificar i exectuar una versió simplificada del procés d'anàlisi de dades òmiques, alhora que practicar amb algunes eines i mètodes que s'han treballat durant el primer repte.
