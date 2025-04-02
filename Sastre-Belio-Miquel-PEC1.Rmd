@@ -22,6 +22,75 @@ Totes les dades s'han obtingut de l'arxiu `ST003156_AN005178.txt`, el qual cont�
 Per a elaborar l'anàlisi s'ha utilitzat el programa RStudio `r version$version.string`, així com el programa Microsoft Excel.
 
 # Resultats
+```{r}
+lines <- readLines("ST003156_AN005178.txt")
+lines[1:20]
+# Ref.: https://support.bioconductor.org/p/9151215/
+```
+```{r}
+metadata <- list(
+  Study_ID = "ST003156",
+  Study_Title = "Diet modulates the protective effects of dimethyl fumarate mediated by the immunometabolic neutrophil receptor HCA2",
+  Project_type = "Metabolomics",
+  Porject_Summary = "Monomethyl fumarate (MMF) and its prodrug dimethyl fumarate (DMF) are currently the most widely used agents for the treatment of multiple sclerosis (MS). However, not all patients benefit from DMF. We hypothesized that the variable response of patients may be due to their diet. In support of this hypothesis,	mice subjected to experimental autoimmune encephalomyelitis (EAE), a model of	MS, did not benefit from DMF treatment when fed a lauric acid-rich (LA) diet, in contrast to normal chow (NC) or, more so, a high-fiber (HFb) diet. DMF lacked efficacy in the LA diet fed group despite similar resorption and preserved 	effects on plasma lipids.",
+  Institute = "University of Luebeck",
+  Department = "Bioanalytic Core Facility",
+  Last_Name = "Inderhees",
+  First_Name = "Julica",
+  email = "julica.inderhees@uni-luebeck.de"
+  )
+
+counts  <- read.csv2(file = "counts.csv", row.names = 1)
+colData <- read.csv(file = "colData.csv", sep = ";",
+                    col.names = c("Sample Source", "Diet", "Treatment"))
+
+limpiar_puntos <- function(x) {
+  
+  if (is.character(x)) {
+    
+    partes <- unlist(strsplit(x, "\\."))
+    
+    if (length(partes) > 1) {
+      
+      return(paste0(paste(partes[-length(partes)], collapse = ""), ".",
+                    partes[length(partes)]))
+    }
+    
+  }
+  
+  return(x)
+  
+}
+
+for (i in 1: nrow(counts)){
+  
+  for (j in 1:ncol(counts)){
+    
+    counts[i,j] <- limpiar_puntos(counts[i,j])
+  }
+}
+
+```
+
+
+
+```{r}
+
+
+# Aplicar la función a cada celda del data frame
+df <- data.frame(
+  col1 = c("123.432.333", "45.67.89", "987.654", "32.2"),
+  col2 = c("1.2.3", "4.5.6", "7.8.9", "9.1"),
+  stringsAsFactors = FALSE
+)
+
+df <- as.data.frame(lapply(df, function(col) sapply(col, limpiar_puntos)))
+
+# Mostrar el data frame modificado
+print(df)
+```
+
+
 
 # Discussió
 
