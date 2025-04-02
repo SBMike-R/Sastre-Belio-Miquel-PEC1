@@ -23,16 +23,31 @@ Per a elaborar l'anàlisi s'ha utilitzat el programa RStudio `r version$version.
 
 # Resultats
 
-```{r}
+## Importació i creació de l'objecte `SummarizedExperiment`
+
+A la següent fragment es mostren les primeres línies del fitxer a partir del qual s'ha extret la informació de l'estudi que s'ha utilitzat per l'elaboració d'aquesta PAC.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(BiocManager)
 library(SummarizedExperiment)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(gridExtra)
+library(janitor)
+library(FactoMineR)
+library(factoextra)
 ```
 
 ```{r}
 lines <- readLines("ST003156_AN005178.txt")
-lines[1:20]
+lines[1:5]
 # Ref.: https://support.bioconductor.org/p/9151215/
 ```
+A continuació, en el següent fragment de codi es mostra la recopil·lació de la informació que s'ha dut a terme. Per elaborar l'objecte `SummarizedExperiment`s'ha creat l'apartat de _metadata_, la qual conté informació de l'estudi (títol, identificador, tipus d'estudi, etc.); l'_assay_, que vindria a ser la matriu de dades crues que conté la informació recollida de totes les mostres o subjectes de l'estudi, la qual consisteix en una sèrie de variables (unitats de mesura: _relative area_) relacionades amb el metabolisme (urea, cratina, etc.); i finalment la _colData_ o factors dels subjectes estudiats, és a dir, aquella informació de les mostres que les diferencien, en aquest cas els factors són la dieta i el tractament. És important destacar que les unitats de mesura de les variables són àrea relativa, la qual cosa es refereix a l'area sota la curva d'un pic en l'espectre, el qual és proporcional a la quantitat del meatbòlit a la mostra. Com que aquests valors no es troben en concentracions absolutes, es denominen _relatives_ ja que indiquen diferències en abundància entre mostres, però no valors exactes. A l'hora de la interpretació entre mostres, si l'àrea relativa de **creatina**, per exemple, és més alta en un grup que un altre, es podria inferir que hi ha un augment de creatina en el primer grup.
+
+Cal comentar que s'ha hagut de preprocessar les dades mínimament per poder elaborar l'exploració de les mateixes posterior.
+
 ```{r}
 metadata <- list(
   Study_ID = "ST003156",
@@ -86,11 +101,98 @@ sumexp <- SummarizedExperiment(assays = list(counts=counts),
                      colData = colData,
                      metadata = list(metadata=metadata))
 
+```
+
+Una vegada preprocessades les dades, s'ha obtingut el següent objecte `SummarizedExperiment`:
+
+```{r}
 colData(sumexp)
 metadata(sumexp)
 head(assay(sumexp))[1:5,1:5]
 ```
 
+Pel que fa a les diferències entre els objectes de tipus `ExpressionSet` i `SummarizedExperiment`, ambdós són estructures utilitzades en l'àmbit de `Bioconductor` per a manejar dades experimentals, però estan dissenyades per a diferents tipus d'estudis. Mentre que `ExpressionSet`s'utilitza principalment en experiments de bioxips, on les files representen característiques com gens o proteïnes i les columnes corresponen a mostres, i va ser una de les primeres implementacions de la llibreria `Biobase`, `SummarizedExperiment`és una evolució o pas endavant, més flexible i modern, la qual es recomana per a experiments basats en seqüenciació com a rNA-Seq.
+
+## Anàlisi exploratòria
+
+```{r}
+dd <- assay(sumexp, "counts")
+dd <- as.data.frame(t(dd))
+
+names(dd) <- gsub(" ", "_", names(dd))
+names(dd) <- gsub("[()]", "", names(dd))  
+names(dd) <- gsub(" ", "_", names(dd))    
+
+dd <- clean_names(dd)
+
+plots <- lapply(names(dd), function(var) {
+  ggplot(dd, aes_string(x = var)) +
+    geom_histogram(bins = 30, fill = "blue", alpha = 0.5, color = "black") +
+    theme_minimal() +
+    ggtitle(var)
+})
+
+# Mostrar los gráficos en una cuadrícula
+grid.arrange(grobs = plots[1:3], ncol = 3)  
+```
+```{r}
+
+dd$Diet      <- colData$Diet
+dd$Treatment <- colData$Treatment
+
+# Filtrar solo las variables numéricas
+numeric_vars <- names(dd)[sapply(dd, is.numeric)]
+
+# Crear una lista de histogramas por cada variable numérica, agrupada por Diet y Treatment
+plots <- lapply(numeric_vars, function(var) {
+  ggplot(dd, aes_string(x = "Diet", y = var, fill = "Diet")) +
+    geom_boxplot(alpha = 0.5, color = "black") +
+    theme_minimal() +
+    facet_grid(. ~ Treatment) +
+    ggtitle(var)
+})
+
+# Mostrar los gráficos en una cuadrícula
+grid.arrange(grobs = plots[1:3], ncol = 3)
+
+
+```
+```{r}
+pca <- prcomp(dd[, numeric_vars], scale. = TRUE)
+summary(pca)
+biplot(pca, scale = 0)
+pca_scores <- as.data.frame(pca$x)
+
+# Añadir las variables de los factores (Diet y Treatment) al dataframe
+pca_scores$Diet <- dd$Diet
+pca_scores$Treatment <- dd$Treatment
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = Diet, shape = Treatment)) +
+  geom_point(size = 3) +
+  labs(title = "PCA - Componentes principales 1 y 2",
+       x = "Componente Principal 1",
+       y = "Componente Principal 2") +
+  theme_minimal()
+
+```
+```{r}
+pca_clustering_data <- pca_scores[, c("PC1", "PC2")]
+
+set.seed(123) 
+kmeans_result <- kmeans(pca_clustering_data, centers = 3) 
+
+
+table(kmeans_result$cluster)
+pca_scores$Cluster <- as.factor(kmeans_result$cluster)
+
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(size = 3) +
+  labs(title = "Clustering K-means sobre los resultados de PCA",
+       x = "Componente Principal 1",
+       y = "Componente Principal 2") +
+  theme_minimal()
+```
 
 # Discussió
 
@@ -99,5 +201,6 @@ head(assay(sumexp))[1:5,1:5]
 # Referències
 
 https://www.sthda.com/english/wiki/expressionset-and-summarizedexperiment
+
 https://rpubs.com/jrgonzalezISGlobal/omicBioC
 
